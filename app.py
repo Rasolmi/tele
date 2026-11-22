@@ -106,7 +106,8 @@ def form_int(name, default=None):
 
 
 @app.get("/")
-def dashboard():
+@app.get("/<int:player_id>")
+def dashboard(player_id=None):
     # Render the app shell before authentication so the Mini App can send initData
     # to /telegram-auth. Protecting this route itself prevents that login flow from running.
     uid = session.get("telegram_user_id")
@@ -115,6 +116,10 @@ def dashboard():
         session.clear()
         current_user = None
         uid = None
+
+    # Personal link /<player_id>: only the verified owner may view it.
+    if player_id is not None and uid is not None and int(uid) != player_id:
+        return redirect(f"/{int(uid)}")
 
     is_admin = bool(current_user and (current_user["is_admin"] or current_user["is_super_admin"]))
     common = {"current_user": current_user, "is_admin": is_admin, "mini_app_url": MINI_APP_URL}
