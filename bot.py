@@ -12,11 +12,11 @@ TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
 
 HELP = (
-    "Delivery bot\n"
-    "/new Customer | Address - create a delivery\n"
-    "/list - latest deliveries\n"
-    "/status ID - show a delivery\n"
-    "/set ID pending|in_transit|delivered|cancelled - update status"
+    "ربات تحویل\n"
+    "/new مشتری | آدرس - ثبت تحویل جدید\n"
+    "/list - آخرین تحویل‌ها\n"
+    "/status شناسه - نمایش یک تحویل\n"
+    "/set شناسه pending|in_transit|delivered|cancelled - تغییر وضعیت"
 )
 
 
@@ -34,27 +34,27 @@ def handle(text):
         return HELP
     if cmd == "/new":
         if "|" not in arg:
-            return "Usage: /new Customer | Address"
+            return "استفاده: /new مشتری | آدرس"
         cust, addr = [s.strip() for s in arg.split("|", 1)]
         if not cust or not addr:
-            return "Usage: /new Customer | Address"
-        return f"Created delivery #{db.add(cust, addr)}"
+            return "استفاده: /new مشتری | آدرس"
+        return f"تحویل #{db.add(cust, addr)} ثبت شد"
     if cmd == "/list":
         rows = db.list_all(10)
-        return "\n".join(fmt(r) for r in rows) or "No deliveries yet"
+        return "\n".join(fmt(r) for r in rows) or "هنوز تحویلی ثبت نشده"
     if cmd == "/status":
         if not arg.isdigit():
-            return "Usage: /status ID"
+            return "استفاده: /status شناسه"
         r = db.get(int(arg))
-        return fmt(r) if r else "Not found"
+        return fmt(r) if r else "پیدا نشد"
     if cmd == "/set":
         p = arg.split()
         if len(p) != 2 or not p[0].isdigit():
-            return "Usage: /set ID status"
+            return "استفاده: /set شناسه وضعیت"
         if p[1] not in db.STATUSES:
-            return "Status must be one of: " + ", ".join(db.STATUSES)
-        return "Updated" if db.set_status(int(p[0]), p[1]) else "Not found"
-    return "Unknown command. Send /help"
+            return "وضعیت باید یکی از این‌ها باشد: " + ", ".join(db.STATUSES)
+        return "بروزرسانی شد" if db.set_status(int(p[0]), p[1]) else "پیدا نشد"
+    return "دستور نامعتبر. /help را بفرستید"
 
 
 def run():
