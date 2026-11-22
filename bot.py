@@ -20,8 +20,13 @@ def is_admin(uid):
     return bool(user and (user["is_admin"] or user["is_super_admin"]))
 
 
+def dashboard_url(uid):
+    """Personal Mini App link: WEB_BASE_URL/<telegram numeric id>."""
+    return f"{WEB_BASE_URL}/{int(uid)}"
+
+
 def keyboard(uid):
-    dashboard_button = KeyboardButton("📊 داشبورد", web_app=WebAppInfo(url=WEB_BASE_URL))
+    dashboard_button = KeyboardButton("📊 داشبورد", web_app=WebAppInfo(url=dashboard_url(uid)))
     rows = [
         [KeyboardButton("⛽ ثبت منابع"), KeyboardButton("👤 پروفایل من")],
         [KeyboardButton("🏆 رتبه‌بندی"), KeyboardButton("🆘 پشتیبانی")],
@@ -30,17 +35,17 @@ def keyboard(uid):
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
-def dashboard_inline_keyboard():
+def dashboard_inline_keyboard(uid):
     """Inline Mini App launcher, shown on /start and /dashboard."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 باز کردن داشبورد", web_app=WebAppInfo(url=WEB_BASE_URL))]
+        [InlineKeyboardButton("📊 باز کردن داشبورد", web_app=WebAppInfo(url=dashboard_url(uid)))]
     ])
 
 
 async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "برای ورود مستقیم، دکمهٔ زیر را بزنید:",
-        reply_markup=dashboard_inline_keyboard(),
+        reply_markup=dashboard_inline_keyboard(update.effective_user.id),
     )
 
 
@@ -49,7 +54,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.add_user(user.id, user.username, user.first_name)
     await update.effective_message.reply_text(
         "✅ خوش آمدی!\nبرای باز کردن داشبورد، دکمهٔ زیر را بزن:",
-        reply_markup=dashboard_inline_keyboard(),
+        reply_markup=dashboard_inline_keyboard(user.id),
     )
     await update.effective_message.reply_text(
         "از دکمه‌های پایین برای استفاده از ربات استفاده کن 👇",
