@@ -1,32 +1,137 @@
 <!doctype html>
-<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>پنل مدیریت تحویل</title>
-<style>
-body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;margin:0;background:#f4f5f7;color:#1c1e21}
-main{max-width:960px;margin:0 auto;padding:24px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
-.card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 2px #0002}
-.card b{font-size:26px;display:block}
-form.add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-input,select,button{padding:8px;border:1px solid #ccd;border-radius:6px;font:inherit}
-button{background:#6d28d9;color:#fff;border:0;cursor:pointer}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden}
-th,td{padding:10px;text-align:right;border-bottom:1px solid #eee}
-.pill{padding:2px 8px;border-radius:99px;font-size:12px;background:#e5e7eb}
-.delivered{background:#bbf7d0}.in_transit{background:#bfdbfe}.cancelled{background:#fecaca}.pending{background:#fde68a}
-.note{color:#b45309;font-size:14px}
-</style></head><body><main>
-<h1>پنل مدیریت تحویل</h1>
-{% if not bot_on %}<p class="note">ربات تلگرام خاموش است: برای فعال‌سازی، متغیر TELEGRAM_BOT_TOKEN را تنظیم کنید.</p>{% endif %}
-<div class="cards">{% for s in statuses %}<div class="card"><b>{{ counts[s] }}</b>{{ labels[s] }}</div>{% endfor %}</div>
-<form class="add" method="post" action="/add">
-<input name="customer" placeholder="مشتری" required>
-<input name="address" placeholder="آدرس" required style="flex:1">
-<button>افزودن تحویل</button></form>
-<table><tr><th>#</th><th>مشتری</th><th>آدرس</th><th>وضعیت</th><th>آخرین بروزرسانی (UTC)</th></tr>
-{% for r in rows %}<tr><td>{{ r.id }}</td><td>{{ r.customer }}</td><td>{{ r.address }}</td>
-<td><form method="post" action="/status/{{ r.id }}"><select name="status" onchange="this.form.submit()">
-{% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s==r.status }}>{{ labels[s] }}</option>{% endfor %}
-</select></form></td><td>{{ r.updated_at }}</td></tr>
-{% else %}<tr><td colspan="5">هنوز تحویلی ثبت نشده</td></tr>{% endfor %}</table>
-</main></body></html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>پنل مدیریت تحویل</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #172033;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --surface: #fff;
+            --background: #f1f5f9;
+            --primary: #6d28d9;
+            --primary-dark: #5b21b6;
+            --shadow: 0 8px 24px rgb(15 23 42 / 6%);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--background);
+            color: var(--ink);
+            font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+        }
+        main { width: min(1120px, 100%); margin: 0 auto; padding: 28px 20px 48px; }
+        .page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+        h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2rem); }
+        h2 { margin: 0 0 16px; font-size: 1.15rem; }
+        .subtitle { margin: 7px 0 0; color: var(--muted); }
+        .note { margin: 0 0 18px; padding: 12px 14px; border: 1px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #92400e; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 14px; margin: 18px 0; }
+        .card { min-width: 0; padding: 18px; border: 1px solid rgb(226 232 240 / 75%); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+        .stat-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .stat-card .label { color: var(--muted); }
+        .stat-card strong { display: block; margin-top: 5px; font-size: 1.8rem; }
+        .stat-icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 12px; background: #f3e8ff; font-size: 1.3rem; }
+        .section { margin-top: 20px; }
+        form.add { display: grid; grid-template-columns: minmax(130px, .8fr) minmax(200px, 1.5fr) auto; gap: 10px; }
+        input, select, button { min-height: 42px; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 9px; font: inherit; }
+        input, select { width: 100%; background: #fff; color: var(--ink); }
+        button { border: 0; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+        button:hover { background: var(--primary-dark); }
+        button:active { transform: translateY(1px); }
+        :focus-visible { outline: 3px solid #c4b5fd; outline-offset: 2px; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; background: var(--surface); }
+        th, td { padding: 13px 15px; border-bottom: 1px solid #eef2f7; text-align: right; vertical-align: middle; }
+        th { background: #f8fafc; color: #475569; font-size: .9rem; white-space: nowrap; }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover { background: #fafaff; }
+        .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+        .delivered { background: #dcfce7; color: #166534; }
+        .in_transit { background: #dbeafe; color: #1d4ed8; }
+        .cancelled { background: #fee2e2; color: #b91c1c; }
+        .pending { background: #fef3c7; color: #92400e; }
+        .status-form { min-width: 130px; }
+        .empty { padding: 28px; color: var(--muted); text-align: center; }
+        @media (max-width: 640px) {
+            main { padding: 20px 12px 32px; }
+            .page-header { align-items: flex-start; }
+            form.add { grid-template-columns: 1fr; }
+            th, td { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header class="page-header">
+        <div>
+            <h1>🚚 پنل مدیریت تحویل</h1>
+            <p class="subtitle">ثبت سفارش‌ها و پیگیری وضعیت تحویل</p>
+        </div>
+    </header>
+
+    {% if not bot_on %}
+    <p class="note">ربات تلگرام خاموش است؛ برای فعال‌سازی، متغیر <code>TELEGRAM_BOT_TOKEN</code> را تنظیم کنید.</p>
+    {% endif %}
+
+    <section class="cards" aria-label="آمار تحویل‌ها">
+        {% for s in statuses %}
+        <article class="card stat-card">
+            <div>
+                <span class="label">{{ labels[s] }}</span>
+                <strong>{{ counts[s] }}</strong>
+            </div>
+            <span class="stat-icon" aria-hidden="true">
+                {% if s == 'pending' %}⏳{% elif s == 'in_transit' %}🚚{% elif s == 'delivered' %}✅{% else %}✖️{% endif %}
+            </span>
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="card section">
+        <h2>➕ ثبت تحویل جدید</h2>
+        <form class="add" method="post" action="{{ url_for('add') }}">
+            <input name="customer" placeholder="نام مشتری" autocomplete="name" required>
+            <input name="address" placeholder="آدرس تحویل" autocomplete="street-address" required>
+            <button type="submit">ثبت تحویل</button>
+        </form>
+    </section>
+
+    <section class="card section">
+        <h2>📦 فهرست تحویل‌ها</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>#</th><th>مشتری</th><th>آدرس</th><th>وضعیت</th><th>آخرین بروزرسانی (UTC)</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td>{{ r.customer }}</td>
+                        <td>{{ r.address }}</td>
+                        <td>
+                            <form class="status-form" method="post" action="{{ url_for('status', did=r.id) }}">
+                                <label class="pill {{ r.status }}" for="status-{{ r.id }}">{{ labels[r.status] }}</label>
+                                <select id="status-{{ r.id }}" name="status" aria-label="تغییر وضعیت تحویل شماره {{ r.id }}" onchange="this.form.submit()">
+                                    {% for s in statuses %}
+                                    <option value="{{ s }}" {{ 'selected' if s == r.status }}>{{ labels[s] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+                        <td>{{ r.updated_at }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td class="empty" colspan="5">هنوز تحویلی ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>
