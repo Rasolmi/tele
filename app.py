@@ -1,32 +1,14 @@
-import hmac
 import os
-from functools import wraps
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
-from werkzeug.security import safe_join
 
 import bot
 import db
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(32)
-WEB_ADMIN_PASSWORD = os.environ.get("WEB_ADMIN_PASSWORD", "")
 db.init()
 bot.start()
-
-
-def web_admin_required(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        if not WEB_ADMIN_PASSWORD:
-            abort(503, description="برای دسترسی به پنل، متغیر WEB_ADMIN_PASSWORD را تنظیم کنید.")
-        auth = request.authorization
-        if not auth or not hmac.compare_digest(auth.password or "", WEB_ADMIN_PASSWORD):
-            return "برای ورود به پنل، نام کاربری دلخواه و رمز WEB_ADMIN_PASSWORD را وارد کنید.", 401, {
-                "WWW-Authenticate": 'Basic realm="Fuel dashboard"'
-            }
-        return view(*args, **kwargs)
-    return wrapped
 
 
 def form_int(name, default=None):
@@ -40,7 +22,6 @@ def form_int(name, default=None):
 
 
 @app.get("/")
-@web_admin_required
 def dashboard():
     return render_template(
         "index.html",
@@ -53,7 +34,6 @@ def dashboard():
 
 
 @app.get("/user/<int:uid>")
-@web_admin_required
 def user_detail(uid):
     user = db.get_user(uid)
     if not user:
@@ -65,7 +45,6 @@ def user_detail(uid):
 
 
 @app.post("/approve/<int:delivery_id>")
-@web_admin_required
 def approve(delivery_id):
     if not db.approve_delivery(delivery_id):
         flash("این مورد وجود ندارد یا قبلاً تایید شده است.", "error")
@@ -75,14 +54,12 @@ def approve(delivery_id):
 
 
 @app.post("/make_admin/<int:uid>")
-@web_admin_required
 def make_admin(uid):
     db.update_user(uid, is_admin=1)
     return redirect(url_for("dashboard"))
 
 
 @app.post("/remove_admin/<int:uid>")
-@web_admin_required
 def remove_admin(uid):
     user = db.get_user(uid)
     if user and not user["is_super_admin"]:
@@ -91,10 +68,10 @@ def remove_admin(uid):
 
 
 @app.post("/leave/<int:uid>")
-@web_admin_required
 def leave(uid):
     try:
         days = form_int("days")
+        import jdatetime
         until = (jdatetime.date.today() + jdatetime.timedelta(days=days)).strftime("%Y/%m/%d")
         db.update_user(uid, leave_until=until)
         flash("مرخصی ثبت شد.", "success")
@@ -104,7 +81,6 @@ def leave(uid):
 
 
 @app.post("/penalty/<int:uid>")
-@web_admin_required
 def penalty(uid):
     try:
         amount = form_int("amount")
@@ -118,28 +94,24 @@ def penalty(uid):
 
 
 @app.post("/kick/<int:uid>")
-@web_admin_required
 def kick(uid):
     db.update_user(uid, is_clan_member=0)
     return redirect(url_for("dashboard"))
 
 
 @app.post("/ban/<int:uid>")
-@web_admin_required
 def ban(uid):
     db.update_user(uid, is_banned=1, is_clan_member=0)
     return redirect(url_for("dashboard"))
 
 
 @app.post("/unban/<int:uid>")
-@web_admin_required
 def unban(uid):
     db.update_user(uid, is_banned=0)
     return redirect(url_for("dashboard"))
 
 
 @app.post("/manual_delivery")
-@web_admin_required
 def manual_delivery():
     try:
         uid = form_int("user_id")
@@ -158,8 +130,4 @@ def manual_delivery():
 
 @app.get("/health")
 def health():
-    return {"ok": True}
-
-
-# jdatetime is used for Jalali dates in the panel routes.
-import jdatetime
+    return {"ok": True, "bot_enabled": bool(bot.TOKEN)}
