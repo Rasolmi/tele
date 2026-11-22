@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 DB_PATH = os.environ.get("DB_PATH", "deliveries.db")
 STATUSES = ["pending", "in_transit", "delivered", "cancelled"]
+LABELS = {"pending": "در انتظار", "in_transit": "در مسیر", "delivered": "تحویل شد", "cancelled": "لغو شد"}
 
 
 def conn():

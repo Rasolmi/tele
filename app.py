@@ -15,6 +15,7 @@ def index():
         rows=db.list_all(),
         counts=db.counts(),
         statuses=db.STATUSES,
+        labels=db.LABELS,
         bot_on=bool(bot.TOKEN),
     )
 
