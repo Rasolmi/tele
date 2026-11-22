@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import threading
@@ -147,13 +148,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _run_polling():
-    application = Application.builder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("profile", profile_command))
-    application.add_handler(CommandHandler("rank", rank_command))
-    application.add_handler(CommandHandler("broadcast", broadcast_command))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Python 3.13 no longer supplies an implicit event loop in a new thread.
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        application = Application.builder().token(TOKEN).build()
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("profile", profile_command))
+        application.add_handler(CommandHandler("rank", rank_command))
+        application.add_handler(CommandHandler("broadcast", broadcast_command))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+        # run_polling is hosted in a background thread; signal handlers must stay disabled there.
+        application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None)
+    finally:
+        asyncio.set_event_loop(None)
+        if not loop.is_closed():
+            loop.close()
 
 
 def start():
