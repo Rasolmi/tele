@@ -1,146 +1,102 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>پنل مدیریت ربات منابع</title>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f1f5f9">
+    <title>داشبورد خانواده</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --ink:#172033; --muted:#64748b; --line:#e2e8f0; --surface:#fff; --bg:#f1f5f9; --primary:#6d28d9; --danger:#dc2626; --success:#15803d; }
-        * { box-sizing:border-box; }
-        body { margin:0; background:var(--bg); color:var(--ink); font-family:Vazirmatn,Tahoma,system-ui,sans-serif; }
-        main { width:min(1250px,100%); margin:auto; padding:26px 18px 48px; }
-        h1 { margin:0; font-size:clamp(1.5rem,3vw,2rem); } h2 { margin:0 0 15px; font-size:1.15rem; }
-        .subtitle { color:var(--muted); margin:7px 0 0; }
-        .card { min-width:0; background:var(--surface); padding:18px; border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 24px #0f172a0a; }
-        .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:18px; }
-        .full { grid-column:1/-1; }
-        .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:18px; }
-        .stat { color:var(--muted); } .stat strong { display:block; color:var(--ink); font-size:1.7rem; margin-top:5px; }
-        .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
-        table { width:100%; border-collapse:collapse; background:#fff; }
-        th,td { text-align:right; padding:11px 12px; border-bottom:1px solid #eef2f7; vertical-align:middle; white-space:nowrap; }
-        th { background:#f8fafc; color:#475569; font-size:.88rem; }
-        tbody tr:last-child td { border-bottom:0; }
-        input,select,button { min-height:38px; padding:7px 10px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; }
-        input,select { background:#fff; max-width:100%; }
-        button { border:0; color:white; background:var(--primary); font-weight:700; cursor:pointer; }
-        button:hover { filter:brightness(.93); }
-        .btn-danger { background:var(--danger); } .btn-success { background:var(--success); } .btn-muted { background:#475569; }
-        .actions { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:310px; }
-        .actions form { display:flex; gap:5px; align-items:center; }
-        .badge { display:inline-block; padding:4px 9px; border-radius:99px; font-size:.82rem; font-weight:700; background:#e2e8f0; }
-        .badge.admin { background:#dbeafe; color:#1d4ed8; } .badge.super { background:#f3e8ff; color:#7e22ce; }
-        .badge.banned { background:#fee2e2; color:#b91c1c; }
-        .flash { padding:11px 14px; border-radius:9px; margin-top:12px; background:#dcfce7; color:#166534; }
-        .flash.error { background:#fee2e2; color:#991b1b; }
-        .empty { color:var(--muted); text-align:center; padding:22px; }
-        .manual-form { display:grid; grid-template-columns:repeat(5,minmax(95px,1fr)) auto; gap:8px; }
-        .search { width:100%; margin-bottom:12px; }
-        a { color:var(--primary); text-decoration:none; } a:hover { text-decoration:underline; }
-        @media(max-width:850px) { .grid { grid-template-columns:1fr; } .full { grid-column:auto; } .manual-form { grid-template-columns:repeat(2,minmax(0,1fr)); } .manual-form button { grid-column:1/-1; } }
-        @media(max-width:520px) { main { padding:18px 10px 32px; } .stats { grid-template-columns:1fr; } .card { padding:14px; } }
+        :root{--ink:#172033;--muted:#64748b;--line:#e2e8f0;--surface:#fff;--bg:#f1f5f9;--primary:#6d28d9;--danger:#dc2626;--success:#15803d}
+        *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,system-ui,sans-serif;padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+        main{width:min(1100px,100%);margin:auto;padding:20px 14px 34px}h1{font-size:1.35rem;margin:0}h2{font-size:1.05rem;margin:0 0 14px}.sub{color:var(--muted);margin:7px 0 18px}
+        .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 5px 20px #0f172a0a}
+        .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.stat{padding:12px;background:#f8fafc;border-radius:10px;color:var(--muted);font-size:.85rem}.stat strong{display:block;color:var(--ink);font-size:1.35rem;margin-top:5px}
+        .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;background:#fff}th,td{text-align:right;padding:10px;border-bottom:1px solid #eef2f7;vertical-align:middle;white-space:nowrap}th{background:#f8fafc;color:#475569;font-size:.84rem}
+        input,select,button{font:inherit;min-height:38px;padding:7px 9px;border:1px solid #cbd5e1;border-radius:8px}input,select{background:white;max-width:100%}button{border:0;background:var(--primary);color:white;font-weight:bold;cursor:pointer}.danger{background:var(--danger)}.success{background:var(--success)}.muted{background:#475569}
+        .actions{display:flex;flex-wrap:wrap;gap:6px;min-width:290px}.actions form{display:flex;gap:4px}.badge{display:inline-block;padding:4px 8px;border-radius:99px;background:#e2e8f0;font-size:.78rem}.admin{background:#dbeafe;color:#1d4ed8}.super{background:#f3e8ff;color:#7e22ce}.banned{background:#fee2e2;color:#b91c1c}
+        .flash{padding:10px;border-radius:9px;background:#dcfce7;color:#166534}.flash.error{background:#fee2e2;color:#991b1b}.hidden{display:none!important}.empty{text-align:center;color:var(--muted);padding:20px}.search{width:100%;margin-bottom:10px}
+        .nav{position:fixed;z-index:10;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:4px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:#ffffffed;border-top:1px solid var(--line);backdrop-filter:blur(12px)}
+        .nav button{flex:1;max-width:180px;background:transparent;color:var(--muted);font-size:.78rem;padding:7px 4px;min-height:48px}.nav button.active{background:#f3e8ff;color:#6d28d9}
+        .rowform{display:flex;gap:8px;flex-wrap:wrap}.rowform>*{flex:1}.login{max-width:480px;margin:10vh auto;text-align:center}.loader{margin:18px auto;border:3px solid #ddd;border-top-color:var(--primary);border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+        @media(min-width:700px){main{padding-top:28px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cols>.card{margin:0}.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
 <body>
-<main>
-    <header>
-        <h1>⛽ پنل مدیریت منابع</h1>
-        <p class="subtitle">تایید تحویل‌ها، ثبت منابع و مدیریت کاربران</p>
-    </header>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}<div class="flash {{ 'error' if category == 'error' else '' }}" role="status">{{ message }}</div>{% endfor %}
-    {% endwith %}
+<div id="auth-view" class="card login"><h2>ورود امن با تلگرام</h2><p id="auth-message">در حال تأیید هویت تلگرام…</p><div class="loader"></div></div>
+<main id="app-view" class="hidden">
+    <header><h1>⛽ داشبورد {{ 'مدیریت' if is_admin else 'من' }}</h1><p class="sub">سلام {{ current_user.first_name or 'کاربر' }} — شناسه تلگرام: {{ current_user.user_id }}</p></header>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<p class="flash {{ 'error' if category=='error' else '' }}">{{ message }}</p>{% endfor %}{% endwith %}
 
-    <section class="stats" aria-label="خلاصه پنل">
-        <div class="card stat">⏳ موارد در انتظار تایید<strong>{{ pending|length }}</strong></div>
-        <div class="card stat">✅ تاییدشده‌های اخیر<strong>{{ approved|length }}</strong></div>
-        <div class="card stat">👥 کاربران ثبت‌شده<strong>{{ users|length }}</strong></div>
+    {% if is_admin %}
+    <section id="tab-overview" class="tab-panel">
+        <div class="stats">
+            <div class="stat">⏳ در انتظار تأیید<strong>{{ pending|length }}</strong></div>
+            <div class="stat">✅ تأییدهای اخیر<strong>{{ approved|length }}</strong></div>
+            <div class="stat">👥 کاربران<strong>{{ users|length }}</strong></div>
+        </div>
+        <div class="cols">
+            <section class="card"><h2>⏳ تحویل‌های در انتظار</h2><div class="table-wrap"><table>
+                <thead><tr><th>کاربر</th><th>⛽</th><th>🟡</th><th>🚀</th><th>💣</th><th>کل</th><th>عملیات</th></tr></thead><tbody>
+                {% for p in pending %}<tr><td><a href="{{ url_for('user_detail',uid=p.user_id) }}">{{ p.first_name or 'بی‌نام' }}</a><br><small>#{{ p.id }}</small></td><td>{{ p.raw_fuel }}</td><td>{{ p.raw_sulfur }}</td><td>{{ p.raw_rocket }}</td><td>{{ p.raw_c4 }}</td><td><b>{{ p.total_fuel_calc }}</b></td><td><form method="post" action="{{ url_for('approve',delivery_id=p.id) }}"><button class="success">✅ تأیید</button></form></td></tr>
+                {% else %}<tr><td class="empty" colspan="7">موردی برای تأیید نیست.</td></tr>{% endfor %}</tbody>
+            </table></div></section>
+            <section class="card"><h2>🏆 رتبه‌بندی</h2><div class="table-wrap"><table><thead><tr><th>#</th><th>کاربر</th><th>سوخت معادل</th></tr></thead><tbody>
+                {% for u in leaderboard %}<tr><td>{{ loop.index }}</td><td>{{ u.first_name or u.user_id }}</td><td>{{ u.total }}</td></tr>{% else %}<tr><td class="empty" colspan="3">هنوز آماری ثبت نشده.</td></tr>{% endfor %}</tbody></table></div></section>
+        </div>
     </section>
-
-    <div class="grid">
-        <section class="card">
-            <h2>⏳ تحویل‌های در انتظار تایید</h2>
-            <div class="table-wrap"><table>
-                <thead><tr><th>کاربر</th><th>⛽</th><th>🟡</th><th>🚀</th><th>💣</th><th>📊 کل</th><th>عملیات</th></tr></thead>
-                <tbody>
-                {% for p in pending %}
-                    <tr>
-                        <td><a href="{{ url_for('user_detail', uid=p.user_id) }}">{{ p.first_name or 'بدون نام' }}</a><br><small>@{{ p.username or '—' }} · #{{ p.id }}</small></td>
-                        <td>{{ p.raw_fuel }}</td><td>{{ p.raw_sulfur }}</td><td>{{ p.raw_rocket }}</td><td>{{ p.raw_c4 }}</td><td><strong>{{ p.total_fuel_calc }}</strong></td>
-                        <td><form method="post" action="{{ url_for('approve', delivery_id=p.id) }}"><button class="btn-success" type="submit">✅ تایید</button></form></td>
-                    </tr>
-                {% else %}<tr><td class="empty" colspan="7">موردی برای تایید نیست.</td></tr>{% endfor %}
-                </tbody>
-            </table></div>
-        </section>
-
-        <section class="card">
-            <h2>🏆 رتبه‌بندی کاربران</h2>
-            <div class="table-wrap"><table>
-                <thead><tr><th>رتبه</th><th>کاربر</th><th>سوخت معادل</th></tr></thead>
-                <tbody>{% for u in leaderboard %}<tr><td>{{ loop.index }}</td><td><a href="{{ url_for('user_detail', uid=u.user_id) }}">{{ u.first_name or 'بدون نام' }}</a></td><td><strong>{{ u.total }}</strong></td></tr>
-                {% else %}<tr><td class="empty" colspan="3">هنوز آماری نیست.</td></tr>{% endfor %}</tbody>
-            </table></div>
-        </section>
-
-        <section class="card full">
-            <h2>✅ آخرین تاییدشده‌ها</h2>
-            <div class="table-wrap"><table>
-                <thead><tr><th>کاربر</th><th>⛽</th><th>��</th><th>🚀</th><th>💣</th><th>📊 کل</th><th>تاریخ</th></tr></thead>
-                <tbody>{% for a in approved %}<tr>
-                    <td><a href="{{ url_for('user_detail', uid=a.user_id) }}">{{ a.first_name or 'بدون نام' }}</a> (@{{ a.username or '—' }})</td>
-                    <td>{{ a.raw_fuel }}</td><td>{{ a.raw_sulfur }}</td><td>{{ a.raw_rocket }}</td><td>{{ a.raw_c4 }}</td><td><strong>{{ a.total_fuel_calc }}</strong></td><td>{{ a.created_at }}</td>
-                </tr>{% else %}<tr><td class="empty" colspan="7">هنوز تحویلی تایید نشده است.</td></tr>{% endfor %}</tbody>
-            </table></div>
-        </section>
-
-        <section class="card full">
-            <h2>➕ ثبت دستی منابع</h2>
-            <form class="manual-form" method="post" action="{{ url_for('manual_delivery') }}">
-                <select name="user_id" required aria-label="انتخاب کاربر"><option value="">انتخاب کاربر</option>{% for u in users %}<option value="{{ u.user_id }}">{{ u.first_name or 'بدون نام' }} · {{ u.user_id }}</option>{% endfor %}</select>
-                <input type="number" min="0" name="fuel" value="0" placeholder="سوخت" aria-label="سوخت">
-                <input type="number" min="0" name="sulfur" value="0" placeholder="گوگرد" aria-label="گوگرد">
-                <input type="number" min="0" name="rocket" value="0" placeholder="راکت" aria-label="راکت">
-                <input type="number" min="0" name="c4" value="0" placeholder="سی‌فور" aria-label="سی‌فور">
-                <button type="submit">ثبت تاییدشده</button>
-            </form>
-        </section>
-
-        <section class="card full">
-            <h2>👥 مدیریت کاربران</h2>
-            <input class="search" type="search" id="search" placeholder="جستجوی نام یا شناسه کاربر..." oninput="filterUsers()" aria-label="جستجوی کاربران">
-            <div class="table-wrap"><table id="users-table">
-                <thead><tr><th>کاربر</th><th>وضعیت</th><th>جریمه</th><th>مرخصی</th><th>سوخت معادل</th><th>عملیات مدیریت</th></tr></thead>
-                <tbody>{% for u in users %}
-                    <tr>
-                        <td><a href="{{ url_for('user_detail', uid=u.user_id) }}">{{ u.first_name or 'بدون نام' }}</a> (@{{ u.username or '—' }})<br><small>ID: {{ u.user_id }}</small></td>
-                        <td>{% if u.is_super_admin %}<span class="badge super">مدیر کل</span>{% elif u.is_admin %}<span class="badge admin">ادمین</span>{% else %}<span class="badge">عضو</span>{% endif %}
-                            {% if u.is_banned %}<span class="badge banned">🚫 مسدود</span>{% elif not u.is_clan_member %}<span class="badge">اخراج‌شده</span>{% endif %}</td>
-                        <td>{{ u.penalty or 0 }}</td><td>{{ u.leave_until or 'ندارد' }}</td><td>{{ u.total_fuel or 0 }}</td>
-                        <td><div class="actions">
-                            <form method="post" action="{{ url_for('penalty', uid=u.user_id) }}"><input type="number" min="0" name="amount" placeholder="جریمه" required aria-label="مقدار جریمه"><button class="btn-danger">جریمه</button></form>
-                            <form method="post" action="{{ url_for('leave', uid=u.user_id) }}"><input type="number" min="0" name="days" placeholder="روز مرخصی" required aria-label="روزهای مرخصی"><button>مرخصی</button></form>
-                            {% if not u.is_super_admin %}
-                                {% if u.is_admin %}<form method="post" action="{{ url_for('remove_admin', uid=u.user_id) }}"><button class="btn-muted">حذف ادمین</button></form>
-                                {% else %}<form method="post" action="{{ url_for('make_admin', uid=u.user_id) }}"><button class="btn-success">ادمین کن</button></form>{% endif %}
-                                {% if u.is_banned %}<form method="post" action="{{ url_for('unban', uid=u.user_id) }}"><button class="btn-success">رفع بن</button></form>
-                                {% else %}<form method="post" action="{{ url_for('ban', uid=u.user_id) }}"><button class="btn-danger">بن</button></form>{% endif %}
-                                {% if u.is_clan_member %}<form method="post" action="{{ url_for('kick', uid=u.user_id) }}"><button class="btn-muted">اخراج</button></form>{% endif %}
-                            {% endif %}
-                        </div></td>
-                    </tr>
-                {% else %}<tr><td class="empty" colspan="6">کاربری ثبت نشده است.</td></tr>{% endfor %}</tbody>
-            </table></div>
-        </section>
-    </div>
+    <section id="tab-deliveries" class="tab-panel hidden">
+        <section class="card"><h2>✅ آخرین تأییدشده‌ها</h2><div class="table-wrap"><table><thead><tr><th>کاربر</th><th>⛽</th><th>🟡</th><th>🚀</th><th>💣</th><th>مجموع</th><th>تاریخ</th></tr></thead><tbody>
+            {% for a in approved %}<tr><td>{{ a.first_name or 'بی‌نام' }}</td><td>{{ a.raw_fuel }}</td><td>{{ a.raw_sulfur }}</td><td>{{ a.raw_rocket }}</td><td>{{ a.raw_c4 }}</td><td>{{ a.total_fuel_calc }}</td><td>{{ a.created_at }}</td></tr>{% else %}<tr><td class="empty" colspan="7">هنوز موردی نیست.</td></tr>{% endfor %}</tbody></table></div></section>
+        <section class="card"><h2>➕ ثبت دستی منابع</h2><form class="rowform" method="post" action="{{ url_for('manual_delivery') }}">
+            <select name="user_id" required><option value="">انتخاب کاربر</option>{% for u in users %}<option value="{{ u.user_id }}">{{ u.first_name or 'بی‌نام' }} · {{ u.user_id }}</option>{% endfor %}</select>
+            <input type="number" min="0" name="fuel" value="0" placeholder="سوخت"><input type="number" min="0" name="sulfur" value="0" placeholder="گوگرد"><input type="number" min="0" name="rocket" value="0" placeholder="راکت"><input type="number" min="0" name="c4" value="0" placeholder="سی‌فور"><button>ثبت</button>
+        </form></section>
+    </section>
+    <section id="tab-users" class="tab-panel hidden"><section class="card"><h2>👥 مدیریت کاربران</h2>
+        <input class="search" id="search" type="search" placeholder="جستجوی نام، یوزرنیم یا شناسه" oninput="filterUsers()">
+        <div class="table-wrap"><table id="users-table"><thead><tr><th>کاربر</th><th>نقش/وضعیت</th><th>جریمه</th><th>مرخصی</th><th>سوخت</th><th>عملیات</th></tr></thead><tbody>
+        {% for u in users %}<tr><td><a href="{{ url_for('user_detail',uid=u.user_id) }}">{{ u.first_name or 'بی‌نام' }}</a> (@{{ u.username or '—' }})<br><small>{{ u.user_id }}</small></td>
+        <td>{% if u.is_super_admin %}<span class="badge super">مدیر کل</span>{% elif u.is_admin %}<span class="badge admin">ادمین</span>{% else %}<span class="badge">عضو</span>{% endif %}{% if u.is_banned %}<span class="badge banned">بن</span>{% elif not u.is_clan_member %}<span class="badge">اخراج‌شده</span>{% endif %}</td>
+        <td>{{ u.penalty or 0 }}</td><td>{{ u.leave_until or 'ندارد' }}</td><td>{{ u.total_fuel or 0 }}</td><td><div class="actions">
+            <form method="post" action="{{ url_for('penalty',uid=u.user_id) }}"><input type="number" min="0" name="amount" placeholder="جریمه" required><button class="danger">ثبت جریمه</button></form>
+            <form method="post" action="{{ url_for('leave',uid=u.user_id) }}"><input type="number" min="0" name="days" placeholder="روز مرخصی" required><button>مرخصی</button></form>
+            {% if not u.is_super_admin %}{% if u.is_admin %}<form method="post" action="{{ url_for('remove_admin',uid=u.user_id) }}"><button class="muted">حذف ادمین</button></form>{% else %}<form method="post" action="{{ url_for('make_admin',uid=u.user_id) }}"><button class="success">ادمین کن</button></form>{% endif %}
+            {% if u.is_banned %}<form method="post" action="{{ url_for('unban',uid=u.user_id) }}"><button class="success">رفع بن</button></form>{% else %}<form method="post" action="{{ url_for('ban',uid=u.user_id) }}"><button class="danger">بن</button></form>{% endif %}{% if u.is_clan_member %}<form method="post" action="{{ url_for('kick',uid=u.user_id) }}"><button class="muted">اخراج</button></form>{% endif %}{% endif %}
+        </div></td></tr>{% else %}<tr><td class="empty" colspan="6">کاربری ثبت نشده.</td></tr>{% endfor %}</tbody></table></div></section></section>
+    {% else %}
+    <section id="tab-overview" class="tab-panel"><div class="stats">
+        <div class="stat">⛽ سوخت معادل<strong>{{ current_user.total_fuel or 0 }}</strong></div><div class="stat">⚠️ بدهی/اعتبار<strong>{{ profile_balance }}</strong></div><div class="stat">🎯 حدنصاب روزانه<strong>{{ daily_required }}</strong></div>
+    </div><section class="card"><h2>👤 پروفایل من</h2><p>{{ current_user.first_name or 'کاربر' }} · @{{ current_user.username or '—' }}</p><p>🟡 گوگرد: {{ current_user.total_sulfur or 0 }} | 🚀 راکت: {{ current_user.total_rocket or 0 }} | 💣 سی‌فور: {{ current_user.total_c4 or 0 }}</p><p>جریمه: {{ current_user.penalty or 0 }} · مرخصی: {{ current_user.leave_until or 'ندارد' }}</p></section>
+    <section class="card"><h2>📅 سابقه روزانه</h2><div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>سوخت</th><th>گوگرد</th><th>راکت</th><th>سی‌فور</th></tr></thead><tbody>{% for r in profile_history %}<tr><td>{{ r.date_jalali }}</td><td>{{ r.fuel }}</td><td>{{ r.sulfur }}</td><td>{{ r.rocket }}</td><td>{{ r.c4 }}</td></tr>{% else %}<tr><td class="empty" colspan="5">سابقه‌ای نیست.</td></tr>{% endfor %}</tbody></table></div></section></section>
+    {% endif %}
 </main>
+<nav id="bottom-nav" class="nav hidden" aria-label="ناوبری داشبورد">
+    <button class="active" data-tab="overview">🏠 خانه</button>
+    {% if is_admin %}<button data-tab="deliveries">📦 تحویل‌ها</button><button data-tab="users">👥 کاربران</button>{% endif %}
+</nav>
 <script>
-function filterUsers() {
-    const query = document.getElementById('search').value.toLocaleLowerCase();
-    document.querySelectorAll('#users-table tbody tr').forEach(row => {
-        row.hidden = !row.textContent.toLocaleLowerCase().includes(query);
-    });
-}
+(function(){
+    const tg=window.Telegram&&window.Telegram.WebApp;
+    const auth=document.getElementById('auth-view'), app=document.getElementById('app-view'), msg=document.getElementById('auth-message');
+    async function authenticate(){
+        if(!tg||!tg.initData){msg.textContent='این داشبورد را از دکمهٔ Mini App داخل ربات باز کنید.';return;}
+        try{
+            tg.ready();tg.expand();
+            const response=await fetch('/telegram-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData})});
+            const result=await response.json();
+            if(!response.ok)throw new Error(result.error||'ورود ناموفق بود.');
+            location.reload();
+        }catch(error){msg.textContent=error.message||'خطا در تأیید هویت تلگرام.';}
+    }
+    {% if current_user %}
+    auth.classList.add('hidden');app.classList.remove('hidden');document.getElementById('bottom-nav').classList.remove('hidden');
+    {% else %}authenticate();{% endif %}
+    document.querySelectorAll('.nav button').forEach(button=>button.addEventListener('click',()=>{
+        document.querySelectorAll('.nav button').forEach(item=>item.classList.toggle('active',item===button));
+        document.querySelectorAll('.tab-panel').forEach(panel=>panel.classList.toggle('hidden',panel.id!=='tab-'+button.dataset.tab));
+        window.scrollTo({top:0,behavior:'smooth'});
+    }));
+})();
+function filterUsers(){const query=document.getElementById('search').value.toLocaleLowerCase();document.querySelectorAll('#users-table tbody tr').forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(query));}
 </script>
-</body>
-</html>
+</body></html>

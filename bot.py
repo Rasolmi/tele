@@ -3,7 +3,7 @@ import logging
 import os
 import threading
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 import db
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 SUPER_ADMIN_ID = int(os.environ.get("SUPER_ADMIN_ID", "0"))
 SUPPORT_USERNAME = os.environ.get("SUPPORT_USERNAME", "yamac_iranland").lstrip("@")
-WEB_BASE_URL = os.environ.get("WEB_BASE_URL", "http://localhost:5000").rstrip("/")
+WEB_BASE_URL = os.environ.get("WEB_BASE_URL", "https://family.merikogames.ir").rstrip("/")
 
 
 def is_admin(uid):
@@ -21,12 +21,12 @@ def is_admin(uid):
 
 
 def keyboard(uid):
+    dashboard_button = KeyboardButton("📊 داشبورد", web_app=WebAppInfo(url=WEB_BASE_URL))
     rows = [
         [KeyboardButton("⛽ ثبت منابع"), KeyboardButton("👤 پروفایل من")],
         [KeyboardButton("🏆 رتبه‌بندی"), KeyboardButton("🆘 پشتیبانی")],
+        [dashboard_button],
     ]
-    if is_admin(uid):
-        rows.append([KeyboardButton("🎛 پنل مدیریت")])
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
@@ -34,7 +34,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db.add_user(user.id, user.username, user.first_name)
     await update.effective_message.reply_text(
-        "✅ خوش آمدی!\nاز دکمه‌ها استفاده کن 👇", reply_markup=keyboard(user.id)
+        "✅ خوش آمدی!\nاز دکمه‌های پایین استفاده کن 👇", reply_markup=keyboard(user.id)
     )
 
 
@@ -48,13 +48,10 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance_text = f"🔵 اعتبار: +{balance}" if balance > 0 else f"🔴 بدهی: {balance}" if balance < 0 else "🟢 تسویه"
     leave = f"🏖 مرخصی تا: {user['leave_until']}\n" if user["leave_until"] else ""
     await update.effective_message.reply_text(
-        f"👤 {user['first_name']}\n\n"
-        f"⛽ کل سوخت معادل: {user['total_fuel'] or 0}\n"
-        f"🟡 گوگرد: {user['total_sulfur'] or 0}\n"
-        f"🚀 راکت: {user['total_rocket'] or 0}\n"
-        f"💣 سی‌فور: {user['total_c4'] or 0}\n"
-        f"💰 {balance_text}\n⚠️ جریمه: {user['penalty'] or 0}\n"
-        f"{leave}🆔 {uid}"
+        f"👤 {user['first_name']}\n\n⛽ کل سوخت معادل: {user['total_fuel'] or 0}\n"
+        f"🟡 گوگرد: {user['total_sulfur'] or 0}\n🚀 راکت: {user['total_rocket'] or 0}\n"
+        f"💣 سی‌فور: {user['total_c4'] or 0}\n💰 {balance_text}\n"
+        f"⚠️ جریمه: {user['penalty'] or 0}\n{leave}🆔 {uid}"
     )
 
 
@@ -89,20 +86,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
     if not message or not message.text:
         return
-    uid = update.effective_user.id
-    text = message.text.strip()
+    uid, text = update.effective_user.id, message.text.strip()
     state = context.user_data.get("delivery_step")
-
     if text == "👤 پروفایل من":
         await profile_command(update, context)
     elif text == "🏆 رتبه‌بندی":
         await rank_command(update, context)
     elif text == "🆘 پشتیبانی":
-        await message.reply_text("برای ارتباط با پشتیبانی روی دکمه زیر بزنید:",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 پیام به پشتیبانی", url=f"https://t.me/{SUPPORT_USERNAME}")]]))
+        await message.reply_text("برای ارتباط با پشتیبانی:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 پیام به پشتیبانی", url=f"https://t.me/{SUPPORT_USERNAME}")]]))
+    elif text == "📊 داشبورد":
+        await message.reply_text("برای ورود به داشبورد، از دکمهٔ «📊 داشبورد» پایین صفحه استفاده کن.")
     elif text == "🎛 پنل مدیریت":
         if is_admin(uid):
-            await message.reply_text(f"پنل مدیریت: {WEB_BASE_URL}")
+            await message.reply_text("پنل مدیریت در Mini App باز می‌شود؛ دکمهٔ «📊 داشبورد» را بزن.")
     elif text == "⛽ ثبت منابع":
         if not db.get_user(uid):
             db.add_user(uid, update.effective_user.username, update.effective_user.first_name)
@@ -148,7 +144,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _run_polling():
-    # Python 3.13 no longer supplies an implicit event loop in a new thread.
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -158,7 +153,6 @@ def _run_polling():
         application.add_handler(CommandHandler("rank", rank_command))
         application.add_handler(CommandHandler("broadcast", broadcast_command))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-        # run_polling is hosted in a background thread; signal handlers must stay disabled there.
         application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None)
     finally:
         asyncio.set_event_loop(None)
