@@ -30,11 +30,30 @@ def keyboard(uid):
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
+def dashboard_inline_keyboard():
+    """Inline Mini App launcher, shown on /start and /dashboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 باز کردن داشبورد", web_app=WebAppInfo(url=WEB_BASE_URL))]
+    ])
+
+
+async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.effective_message.reply_text(
+        "برای ورود مستقیم، دکمهٔ زیر را بزنید:",
+        reply_markup=dashboard_inline_keyboard(),
+    )
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db.add_user(user.id, user.username, user.first_name)
     await update.effective_message.reply_text(
-        "✅ خوش آمدی!\nاز دکمه‌های پایین استفاده کن 👇", reply_markup=keyboard(user.id)
+        "✅ خوش آمدی!\nبرای باز کردن داشبورد، دکمهٔ زیر را بزن:",
+        reply_markup=dashboard_inline_keyboard(),
+    )
+    await update.effective_message.reply_text(
+        "از دکمه‌های پایین برای استفاده از ربات استفاده کن 👇",
+        reply_markup=keyboard(user.id),
     )
 
 
@@ -95,10 +114,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "🆘 پشتیبانی":
         await message.reply_text("برای ارتباط با پشتیبانی:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 پیام به پشتیبانی", url=f"https://t.me/{SUPPORT_USERNAME}")]]))
     elif text == "📊 داشبورد":
-        await message.reply_text("برای ورود به داشبورد، از دکمهٔ «📊 داشبورد» پایین صفحه استفاده کن.")
+        await dashboard_command(update, context)
     elif text == "🎛 پنل مدیریت":
         if is_admin(uid):
-            await message.reply_text("پنل مدیریت در Mini App باز می‌شود؛ دکمهٔ «📊 داشبورد» را بزن.")
+            await dashboard_command(update, context)
     elif text == "⛽ ثبت منابع":
         if not db.get_user(uid):
             db.add_user(uid, update.effective_user.username, update.effective_user.first_name)
@@ -149,6 +168,7 @@ def _run_polling():
     try:
         application = Application.builder().token(TOKEN).build()
         application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("dashboard", dashboard_command))
         application.add_handler(CommandHandler("profile", profile_command))
         application.add_handler(CommandHandler("rank", rank_command))
         application.add_handler(CommandHandler("broadcast", broadcast_command))

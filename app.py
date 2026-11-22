@@ -106,12 +106,22 @@ def form_int(name, default=None):
 
 
 @app.get("/")
-@telegram_user_required
 def dashboard():
-    uid = session["telegram_user_id"]
-    current_user = db.get_user(uid)
-    is_admin = bool(current_user["is_admin"] or current_user["is_super_admin"])
+    # Render the app shell before authentication so the Mini App can send initData
+    # to /telegram-auth. Protecting this route itself prevents that login flow from running.
+    uid = session.get("telegram_user_id")
+    current_user = db.get_user(uid) if uid else None
+    if not current_user or current_user["is_banned"]:
+        session.clear()
+        current_user = None
+        uid = None
+
+    is_admin = bool(current_user and (current_user["is_admin"] or current_user["is_super_admin"]))
     common = {"current_user": current_user, "is_admin": is_admin, "mini_app_url": MINI_APP_URL}
+    if not current_user:
+        return render_template("index.html", **common,
+                               pending=[], approved=[], leaderboard=[], users=[], daily_required=db.DAILY_REQUIRED,
+                               profile_balance=0, profile_history=[])
     if not is_admin:
         return render_template("index.html", **common,
                                pending=[], approved=[], leaderboard=[], users=[], daily_required=db.DAILY_REQUIRED,
