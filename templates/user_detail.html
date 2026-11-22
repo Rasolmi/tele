@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>پروفایل {{ user.first_name or user.user_id }}</title>
+    <style>
+        body{margin:0;background:#f1f5f9;color:#172033;font-family:Vazirmatn,Tahoma,system-ui,sans-serif}
+        main{max-width:900px;margin:auto;padding:24px 16px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin:16px 0;overflow:auto}
+        table{width:100%;border-collapse:collapse}th,td{text-align:right;padding:10px;border-bottom:1px solid #eee;white-space:nowrap}
+        a{color:#6d28d9;text-decoration:none}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+    </style>
+</head>
+<body><main>
+    <a href="{{ url_for('dashboard') }}">→ بازگشت به پنل</a>
+    <h1>👤 {{ user.first_name or 'کاربر' }}</h1>
+    <p>@{{ user.username or '—' }} · شناسه {{ user.user_id }}</p>
+    <section class="stats">
+        <div class="card">⛽ سوخت معادل: <strong>{{ user.total_fuel or 0 }}</strong></div>
+        <div class="card">🟡 گوگرد: <strong>{{ user.total_sulfur or 0 }}</strong></div>
+        <div class="card">🚀 راکت: <strong>{{ user.total_rocket or 0 }}</strong></div>
+        <div class="card">💣 سی‌فور: <strong>{{ user.total_c4 or 0 }}</strong></div>
+        <div class="card">💰 مانده: <strong>{{ balance }}</strong></div>
+        <div class="card">⚠️ جریمه: <strong>{{ user.penalty or 0 }}</strong></div>
+    </section>
+    <section class="card"><h2>📅 سابقه روزانه (حد نصاب روزانه: {{ daily_required }})</h2>
+        <table><thead><tr><th>تاریخ شمسی</th><th>سوخت</th><th>گوگرد</th><th>راکت</th><th>سی‌فور</th></tr></thead>
+        <tbody>{% for row in history %}<tr><td>{{ row.date_jalali }}</td><td>{{ row.fuel }}</td><td>{{ row.sulfur }}</td><td>{{ row.rocket }}</td><td>{{ row.c4 }}</td></tr>
+        {% else %}<tr><td colspan="5">هنوز سابقه‌ای ثبت نشده است.</td></tr>{% endfor %}</tbody></table>
+    </section>
+</main></body></html>

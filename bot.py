@@ -1,85 +1,166 @@
 import logging
 import os
 import threading
-import time
 
-import requests
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Update
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 import db
 
-log = logging.getLogger("bot")
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-API = f"https://api.telegram.org/bot{TOKEN}"
-
-HELP = (
-    "ربات تحویل\n"
-    "/new مشتری | آدرس - ثبت تحویل جدید\n"
-    "/list - آخرین تحویل‌ها\n"
-    "/status شناسه - نمایش یک تحویل\n"
-    "/set شناسه pending|in_transit|delivered|cancelled - تغییر وضعیت"
-)
+log = logging.getLogger(__name__)
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+SUPER_ADMIN_ID = int(os.environ.get("SUPER_ADMIN_ID", "0"))
+SUPPORT_USERNAME = os.environ.get("SUPPORT_USERNAME", "yamac_iranland").lstrip("@")
+WEB_BASE_URL = os.environ.get("WEB_BASE_URL", "http://localhost:5000").rstrip("/")
 
 
-def fmt(r):
-    return f"#{r['id']} {r['customer']} - {r['address']} [{r['status']}]"
+def is_admin(uid):
+    user = db.get_user(uid)
+    return bool(user and (user["is_admin"] or user["is_super_admin"]))
 
 
-def handle(text):
-    parts = text.strip().split(None, 1)
-    if not parts:
-        return None
-    cmd = parts[0].split("@")[0].lower()
-    arg = parts[1].strip() if len(parts) > 1 else ""
-    if cmd in ("/start", "/help"):
-        return HELP
-    if cmd == "/new":
-        if "|" not in arg:
-            return "استفاده: /new مشتری | آدرس"
-        cust, addr = [s.strip() for s in arg.split("|", 1)]
-        if not cust or not addr:
-            return "استفاده: /new مشتری | آدرس"
-        return f"تحویل #{db.add(cust, addr)} ثبت شد"
-    if cmd == "/list":
-        rows = db.list_all(10)
-        return "\n".join(fmt(r) for r in rows) or "هنوز تحویلی ثبت نشده"
-    if cmd == "/status":
-        if not arg.isdigit():
-            return "استفاده: /status شناسه"
-        r = db.get(int(arg))
-        return fmt(r) if r else "پیدا نشد"
-    if cmd == "/set":
-        p = arg.split()
-        if len(p) != 2 or not p[0].isdigit():
-            return "استفاده: /set شناسه وضعیت"
-        if p[1] not in db.STATUSES:
-            return "وضعیت باید یکی از این‌ها باشد: " + ", ".join(db.STATUSES)
-        return "بروزرسانی شد" if db.set_status(int(p[0]), p[1]) else "پیدا نشد"
-    return "دستور نامعتبر. /help را بفرستید"
+def keyboard(uid):
+    rows = [
+        [KeyboardButton("⛽ ثبت منابع"), KeyboardButton("👤 پروفایل من")],
+        [KeyboardButton("🏆 رتبه‌بندی"), KeyboardButton("🆘 پشتیبانی")],
+    ]
+    if is_admin(uid):
+        rows.append([KeyboardButton("🎛 پنل مدیریت")])
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
-def run():
-    offset = 0
-    while True:
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    db.add_user(user.id, user.username, user.first_name)
+    await update.effective_message.reply_text(
+        "✅ خوش آمدی!\nاز دکمه‌ها استفاده کن 👇", reply_markup=keyboard(user.id)
+    )
+
+
+async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    user = db.get_user(uid)
+    if not user:
+        await update.effective_message.reply_text("ابتدا /start را بفرست.")
+        return
+    balance = db.get_user_balance(uid)
+    balance_text = f"🔵 اعتبار: +{balance}" if balance > 0 else f"🔴 بدهی: {balance}" if balance < 0 else "🟢 تسویه"
+    leave = f"🏖 مرخصی تا: {user['leave_until']}\n" if user["leave_until"] else ""
+    await update.effective_message.reply_text(
+        f"👤 {user['first_name']}\n\n"
+        f"⛽ کل سوخت معادل: {user['total_fuel'] or 0}\n"
+        f"🟡 گوگرد: {user['total_sulfur'] or 0}\n"
+        f"🚀 راکت: {user['total_rocket'] or 0}\n"
+        f"💣 سی‌فور: {user['total_c4'] or 0}\n"
+        f"💰 {balance_text}\n⚠️ جریمه: {user['penalty'] or 0}\n"
+        f"{leave}🆔 {uid}"
+    )
+
+
+async def rank_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    users = db.get_leaderboard()
+    text = "🏆 برترین‌ها\n\n" + "\n".join(
+        f"{index}. {user['first_name'] or user['user_id']} : {user['total']}"
+        for index, user in enumerate(users, 1)
+    )
+    await update.effective_message.reply_text(text if users else "هنوز آماری ثبت نشده است.")
+
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.effective_message.reply_text("روش استفاده: /broadcast متن پیام")
+        return
+    sent = 0
+    for user in db.get_all_users():
+        if user["is_clan_member"] and not user["is_banned"]:
+            try:
+                await context.bot.send_message(user["user_id"], text)
+                sent += 1
+            except Exception:
+                log.exception("Could not send broadcast to user %s", user["user_id"])
+    await update.effective_message.reply_text(f"✅ پیام برای {sent} نفر ارسال شد.")
+
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.effective_message
+    if not message or not message.text:
+        return
+    uid = update.effective_user.id
+    text = message.text.strip()
+    state = context.user_data.get("delivery_step")
+
+    if text == "👤 پروفایل من":
+        await profile_command(update, context)
+    elif text == "🏆 رتبه‌بندی":
+        await rank_command(update, context)
+    elif text == "🆘 پشتیبانی":
+        await message.reply_text("برای ارتباط با پشتیبانی روی دکمه زیر بزنید:",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 پیام به پشتیبانی", url=f"https://t.me/{SUPPORT_USERNAME}")]]))
+    elif text == "🎛 پنل مدیریت":
+        if is_admin(uid):
+            await message.reply_text(f"پنل مدیریت: {WEB_BASE_URL}")
+    elif text == "⛽ ثبت منابع":
+        if not db.get_user(uid):
+            db.add_user(uid, update.effective_user.username, update.effective_user.first_name)
+        if db.get_user(uid)["is_banned"]:
+            await message.reply_text("حساب شما مسدود است.")
+            return
+        context.user_data["delivery"] = {}
+        context.user_data["delivery_step"] = "fuel"
+        await message.reply_text("چند سوخت آوردی؟ (اگر صفر بود 0 بزن)")
+    elif state:
         try:
-            r = requests.get(f"{API}/getUpdates", params={"timeout": 30, "offset": offset}, timeout=40)
-            for u in r.json().get("result", []):
-                offset = u["update_id"] + 1
-                m = u.get("message") or {}
-                if "text" in m:
-                    reply = handle(m["text"])
-                    if reply:
-                        requests.post(
-                            f"{API}/sendMessage",
-                            json={"chat_id": m["chat"]["id"], "text": reply},
-                            timeout=10,
-                        )
-        except Exception as e:  # keep polling on any error
-            log.warning("poll error: %s", e)
-            time.sleep(5)
+            value = int(text)
+            if value < 0:
+                raise ValueError
+        except ValueError:
+            await message.reply_text("❌ فقط عدد صحیح صفر یا بزرگ‌تر وارد کن.")
+            return
+        delivery = context.user_data.setdefault("delivery", {})
+        steps = [("fuel", "sulfur", "چند گوگرد آوردی؟ (اگر نداری 0 بزن)"),
+                 ("sulfur", "rocket", "چند راکت آوردی؟ (اگر نداری 0 بزن)"),
+                 ("rocket", "c4", "چند سی‌فور آوردی؟ (اگر نداری 0 بزن)")]
+        if state != "c4":
+            delivery[state] = value
+            _, next_step, prompt = next(item for item in steps if item[0] == state)
+            context.user_data["delivery_step"] = next_step
+            await message.reply_text(prompt)
+            return
+        delivery["c4"] = value
+        fuel, sulfur, rocket, c4 = (delivery.get(key, 0) for key in ("fuel", "sulfur", "rocket", "c4"))
+        if not any((fuel, sulfur, rocket, c4)):
+            context.user_data.pop("delivery_step", None)
+            context.user_data.pop("delivery", None)
+            await message.reply_text("❌ حداقل یکی از منابع باید بیشتر از صفر باشد.")
+            return
+        total = db.submit_delivery(uid, fuel, sulfur, rocket, c4)
+        context.user_data.pop("delivery_step", None)
+        context.user_data.pop("delivery", None)
+        await message.reply_text(
+            f"✅ منابع ثبت شد:\n⛽ سوخت خام: {fuel}\n🟡 گوگرد: {sulfur} (معادل {sulfur // 2} سوخت)\n"
+            f"🚀 راکت: {rocket} (معادل {rocket * 50} سوخت)\n💣 سی‌فور: {c4} (معادل {c4 * 75} سوخت)\n\n"
+            f"📊 مجموع معادل: {total} سوخت\n⏳ در انتظار تایید ادمین..."
+        )
+
+
+def _run_polling():
+    application = Application.builder().token(TOKEN).build()
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("profile", profile_command))
+    application.add_handler(CommandHandler("rank", rank_command))
+    application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 def start():
     if not TOKEN:
-        log.warning("TELEGRAM_BOT_TOKEN not set; bot disabled, dashboard only")
+        log.warning("TELEGRAM_BOT_TOKEN is not set; bot is disabled")
         return
-    threading.Thread(target=run, daemon=True).start()
+    if getattr(start, "started", False):
+        return
+    start.started = True
+    threading.Thread(target=_run_polling, name="telegram-bot", daemon=True).start()
